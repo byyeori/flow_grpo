@@ -1,5 +1,5 @@
 import ml_collections
-
+SAVE_DIR = 'outputs/sd35_grpo_pickscore'
 
 def get_config():
     config = ml_collections.ConfigDict()
@@ -26,31 +26,31 @@ def get_config():
     config.allow_tf32 = True
     # whether or not to use LoRA.
     config.use_lora = True
-    config.dataset = "dataset/ocr"
-    config.resolution = 512 # 1080Ti
-    config.activation_checkpointing = False
+    config.dataset = "dataset/pickscore"
+    config.resolution = 256 # 1080Ti
+    config.activation_checkpointing = True
     config.fsdp_optimizer_offload = False
 
     ###### Pretrained Model ######
     config.pretrained = pretrained = ml_collections.ConfigDict()
     # base model to load. either a path to a local directory, or a model name from the HuggingFace model hub.
-    pretrained.model = "stabilityai/stable-diffusion-3.5-medium"
+    pretrained.model = "stabilityai/stable-diffusion-xl-base-1.0"
     # revision of the model to load.
     pretrained.revision = "main"
 
     ###### Sampling ######
     config.sample = sample = ml_collections.ConfigDict()
     # number of sampler inference steps for collecting dataset.
-    sample.num_steps = 40
+    sample.num_steps = 10
     # number of sampler inference steps for evaluation.
-    sample.eval_num_steps = 40
+    sample.eval_num_steps = 10
     # classifier-free guidance weight. 1.0 is no guidance.
     sample.guidance_scale = 4.5
     # classifier-free guidance weight for evaluation. 1.0 is no guidance.
     sample.eval_guidance_scale = 4.5
     # batch size (per GPU!) to use for sampling.
-    sample.train_batch_size = 1
-    sample.num_image_per_prompt = 4
+    sample.train_batch_size = 2
+    sample.num_image_per_prompt = 2
     sample.test_batch_size = 1
     # number of batches to sample per epoch. the total number of samples per epoch is `num_batches_per_epoch *
     # batch_size * num_gpus`.
@@ -64,7 +64,7 @@ def get_config():
     # sde window size
     sample.sde_window_size = 2
     # sde window range
-    sample.sde_window_range = (0, 10)
+    sample.sde_window_range = (0, 8)# (0, 10)
     
     ###### Training ######
     config.train = train = ml_collections.ConfigDict()
@@ -96,7 +96,7 @@ def get_config():
     # clip advantages to the range [-adv_clip_max, adv_clip_max].
     train.adv_clip_max = 5
     # the PPO clip range.
-    train.clip_range = 1e-4
+    train.clip_range = 0.2 # 1e-4
     train.clip_range_lt = 1e-4
     train.clip_range_gt = 1e-4
     train.timestep_shift = 3.0  # for bagel
@@ -104,7 +104,7 @@ def get_config():
     # timesteps for each sample. this will speed up training but reduce the accuracy of policy gradient estimates.
     train.timestep_fraction = 1.0
     # kl ratio
-    train.beta = 0.0
+    train.beta = 0.01
     # pretrained lora path
     train.lora_path = None
     # save ema model
@@ -120,11 +120,10 @@ def get_config():
     # reward function to use. see `rewards.py` for available reward functions.
     # config.reward_fn = ml_collections.ConfigDict()
     config.reward_fn = reward = ml_collections.ConfigDict()
-    # 예시: CLIP 점수와 미적 점수를 조합하는 경우
-    reward.models = ["clip", "aesthetic"] 
-    reward.weights = [1.0, 0.5]
+    reward.models = ["pickscore"]
+    reward.weights = [1.0]
 
-    config.save_dir = 'outputs/sd35_grpo_ocr'
+    config.save_dir = SAVE_DIR
 
     ###### Per-Prompt Stat Tracking ######
     config.per_prompt_stat_tracking = True

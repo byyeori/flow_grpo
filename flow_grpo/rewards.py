@@ -4,6 +4,8 @@ import numpy as np
 import torch
 from collections import defaultdict
 
+
+
 def jpeg_incompressibility():
     def _fn(images, prompts, metadata):
         if isinstance(images, torch.Tensor):
@@ -410,8 +412,8 @@ def unifiedreward_score_sglang(device):
 def multi_score(device, score_dict):
     score_functions = {
         "deqa": deqa_score_remote,
-        "ocr": ocr_score,
-        "video_ocr": video_ocr_score,
+        # "ocr": ocr_score,
+        # "video_ocr": video_ocr_score,
         "imagereward": imagereward_score,
         "pickscore": pickscore_score,
         "qwenvl": qwenvl_score,

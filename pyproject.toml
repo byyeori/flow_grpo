@@ -57,6 +57,7 @@ dependencies = [
     "ml_collections",
     "sentencepiece",
     "openai",
+    "paddleocr>=2.9.1",
 ]
 
 [project.optional-dependencies]

@@ -33,7 +33,6 @@ from flow_grpo.ema import EMAModuleWrapper
 
 tqdm = partial(tqdm.tqdm, dynamic_ncols=True)
 
-
 FLAGS = flags.FLAGS
 config_flags.DEFINE_config_file("config", "config/base.py", "Training configuration.")
 
@@ -407,12 +406,13 @@ def main(_):
         inference_dtype = torch.bfloat16
 
     # Move vae and text_encoder to device and cast to inference_dtype
-    pipeline.vae.to(accelerator.device, dtype=torch.float32)
-    pipeline.text_encoder.to(accelerator.device, dtype=inference_dtype)
-    pipeline.text_encoder_2.to(accelerator.device, dtype=inference_dtype)
-    pipeline.text_encoder_3.to(accelerator.device, dtype=inference_dtype)
+    # pipeline.vae.to(accelerator.device, dtype=torch.float32)
+    # pipeline.text_encoder.to(accelerator.device, dtype=inference_dtype)
+    # pipeline.text_encoder_2.to(accelerator.device, dtype=inference_dtype)
+    # pipeline.text_encoder_3.to(accelerator.device, dtype=inference_dtype)
     
-    pipeline.transformer.to(accelerator.device)
+    # pipeline.transformer.to(accelerator.device)
+    pipeline.enable_model_cpu_offload()
 
     if config.use_lora:
         # Set correct lora layers
