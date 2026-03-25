@@ -8,7 +8,7 @@ version = "0.0.1"
 description = "Training Flow Matching Models via Online RL"
 readme = "README.md"
 license = { text = "MIT" }
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.12"
 authors = [
     { name = "Flow-GRPO Team" }
 ]
@@ -75,9 +75,9 @@ dev = [
 ]
 
 # Reward Models - Choose what you need
-geneval = [
-    "geneval>=0.1.0",
-]
+#geneval = [
+#    "geneval>=0.1.0",
+#]
 
 ocr = [
     "paddlepaddle-gpu==2.6.2",
@@ -89,18 +89,18 @@ imagereward = [
     "image-reward",
 ]
 
-unified-reward = [
-    "sglang[all]",
-]
+#unified-reward = [
+#    "sglang[all]",
+#]
 
 # All reward models (for experimentation)
-all-rewards = [
-    "geneval>=0.1.0",
-    "paddlepaddle-gpu==2.6.2",
-    "paddleocr==2.9.1",
-    "python-Levenshtein",
-    "image-reward",
-]
+#all-rewards = [
+#    "geneval>=0.1.0",
+#    "paddlepaddle-gpu==2.6.2",
+#    "paddleocr==2.9.1",
+#    "python-Levenshtein",
+#    "image-reward",
+#]
 
 # Optional optimizations
 flash-attn = [
