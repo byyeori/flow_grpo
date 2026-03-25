@@ -26,15 +26,15 @@ def get_config():
     config.allow_tf32 = True
     # whether or not to use LoRA.
     config.use_lora = True
-    config.dataset = ""
-    config.resolution = 768
+    config.dataset = "dataset/ocr"
+    config.resolution = 512 # 1080Ti
     config.activation_checkpointing = False
     config.fsdp_optimizer_offload = False
 
     ###### Pretrained Model ######
     config.pretrained = pretrained = ml_collections.ConfigDict()
     # base model to load. either a path to a local directory, or a model name from the HuggingFace model hub.
-    pretrained.model = "runwayml/stable-diffusion-v1-5"
+    pretrained.model = "stabilityai/stable-diffusion-3.5-medium"
     # revision of the model to load.
     pretrained.revision = "main"
 
@@ -50,7 +50,7 @@ def get_config():
     sample.eval_guidance_scale = 4.5
     # batch size (per GPU!) to use for sampling.
     sample.train_batch_size = 1
-    sample.num_image_per_prompt = 1
+    sample.num_image_per_prompt = 4
     sample.test_batch_size = 1
     # number of batches to sample per epoch. the total number of samples per epoch is `num_batches_per_epoch *
     # batch_size * num_gpus`.
@@ -71,9 +71,9 @@ def get_config():
     # batch size (per GPU!) to use for training.
     train.batch_size = 1
     # whether to use the 8bit Adam optimizer from bitsandbytes.
-    train.use_8bit_adam = False
+    train.use_8bit_adam = True
     # learning rate.
-    train.learning_rate = 3e-4
+    train.learning_rate = 1e-5 # SD3.5는 3e-4보다 낮은 lrate 권장
     # Adam beta1.
     train.adam_beta1 = 0.9
     # Adam beta2.
@@ -112,14 +112,19 @@ def get_config():
 
     ###### Prompt Function ######
     # prompt function to use. see `prompts.py` for available prompt functions.
-    config.prompt_fn = "imagenet_animals"
+    config.prompt_fn = "general_ocr"
     # kwargs to pass to the prompt function.
     config.prompt_fn_kwargs = {}
 
     ###### Reward Function ######
     # reward function to use. see `rewards.py` for available reward functions.
-    config.reward_fn = ml_collections.ConfigDict()
-    config.save_dir = ''
+    # config.reward_fn = ml_collections.ConfigDict()
+    config.reward_fn = reward = ml_collections.ConfigDict()
+    # 예시: CLIP 점수와 미적 점수를 조합하는 경우
+    reward.models = ["clip", "aesthetic"] 
+    reward.weights = [1.0, 0.5]
+
+    config.save_dir = 'outputs/sd35_grpo_ocr'
 
     ###### Per-Prompt Stat Tracking ######
     config.per_prompt_stat_tracking = True
