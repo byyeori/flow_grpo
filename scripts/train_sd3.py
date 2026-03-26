@@ -427,10 +427,7 @@ def main(_):
     pipeline.text_encoder_3.to(accelerator.device, dtype=inference_dtype)
     
     pipeline.transformer.to(accelerator.device)
-    ## 추가함 ##
-    if config.train.activation_checkpointing:
-        pipeline.transformer.enable_gradient_checkpointing()
-    ###
+
     if config.use_lora:
         # Set correct lora layers
         target_modules = [
@@ -455,7 +452,11 @@ def main(_):
             pipeline.transformer.set_adapter("default")
         else:
             pipeline.transformer = get_peft_model(pipeline.transformer, transformer_lora_config)
-    
+            
+    ## 추가함 ##
+    if config.activation_checkpointing:
+        pipeline.transformer.enable_gradient_checkpointing()
+    ###
     transformer = pipeline.transformer
     transformer_trainable_parameters = list(filter(lambda p: p.requires_grad, transformer.parameters()))
     # This ema setting affects the previous 20 × 8 = 160 steps on average.
@@ -569,8 +570,8 @@ def main(_):
 
     # for some reason, autocast is necessary for non-lora training but for lora training it isn't necessary and it uses
     # more memory
-    autocast = contextlib.nullcontext if config.use_lora else accelerator.autocast
-    # autocast = accelerator.autocast
+    # autocast = contextlib.nullcontext if config.use_lora else accelerator.autocast
+    autocast = accelerator.autocast
 
     # Prepare everything with our `accelerator`.
     transformer, optimizer, train_dataloader, test_dataloader = accelerator.prepare(transformer, optimizer, train_dataloader, test_dataloader)
@@ -668,7 +669,11 @@ def main(_):
                 # )
                 generator = None
             else:
-                generator = None
+                ### 수정함 ##
+                # generator = None
+                generator = torch.Generator(device=accelerator.device)
+                generator.manual_seed(torch.randint(0, 1_000_000, (1,)).item())
+                ####
             with autocast():
                 with torch.no_grad():
                     images, latents, log_probs = pipeline_with_logprob(
