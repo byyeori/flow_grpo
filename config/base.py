@@ -49,12 +49,12 @@ def get_config():
     # classifier-free guidance weight for evaluation. 1.0 is no guidance.
     sample.eval_guidance_scale = 4.5
     # batch size (per GPU!) to use for sampling.
-    sample.train_batch_size = 2
+    sample.train_batch_size = 4
     sample.num_image_per_prompt = 4
     sample.test_batch_size = 2
     # number of batches to sample per epoch. the total number of samples per epoch is `num_batches_per_epoch *
     # batch_size * num_gpus`.
-    sample.num_batches_per_epoch = 2
+    sample.num_batches_per_epoch = 8
     # Whether use all samples in a batch to compute std
     sample.global_std = True
     # noise level
@@ -73,7 +73,7 @@ def get_config():
     # whether to use the 8bit Adam optimizer from bitsandbytes.
     train.use_8bit_adam = True
     # learning rate.
-    train.learning_rate = 1e-5 # SD3.5는 3e-4보다 낮은 lrate 권장
+    train.learning_rate = 3e-5 # SD3.5는 3e-4보다 낮은 lrate 권장
     # Adam beta1.
     train.adam_beta1 = 0.9
     # Adam beta2.
@@ -102,7 +102,7 @@ def get_config():
     train.timestep_shift = 3.0  # for bagel
     # the fraction of timesteps to train on. if set to less than 1.0, the model will be trained on a subset of the
     # timesteps for each sample. this will speed up training but reduce the accuracy of policy gradient estimates.
-    train.timestep_fraction = 1.0
+    train.timestep_fraction = 0.7
     # kl ratio
     train.beta = 0.01
     # pretrained lora path

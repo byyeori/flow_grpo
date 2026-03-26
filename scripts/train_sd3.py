@@ -218,8 +218,8 @@ def eval(pipeline, test_dataloader, text_encoders, tokenizers, config, accelerat
         ema.copy_ema_to(transformer_trainable_parameters, store_temp=True)
     neg_prompt_embed, neg_pooled_prompt_embed = compute_text_embeddings([""], text_encoders, tokenizers, max_sequence_length=128, device=accelerator.device)
 
-    sample_neg_prompt_embeds = neg_prompt_embed.repeat(config.sample.test_batch_size, 1, 1)
-    sample_neg_pooled_prompt_embeds = neg_pooled_prompt_embed.repeat(config.sample.test_batch_size, 1)
+    # sample_neg_prompt_embeds = neg_prompt_embed.repeat(config.sample.test_batch_size, 1, 1)
+    # sample_neg_pooled_prompt_embeds = neg_pooled_prompt_embed.repeat(config.sample.test_batch_size, 1)
 
     # test_dataloader = itertools.islice(test_dataloader, 2)
     all_rewards = defaultdict(list)
@@ -237,10 +237,16 @@ def eval(pipeline, test_dataloader, text_encoders, tokenizers, config, accelerat
             max_sequence_length=128, 
             device=accelerator.device
         )
+        ### 추가함 ###
+        batch_size = prompt_embeds.shape[0]
+        sample_neg_prompt_embeds = neg_prompt_embed.repeat(batch_size, 1, 1)
+        sample_neg_pooled_prompt_embeds = neg_pooled_prompt_embed.repeat(batch_size, 1)
+        ###
+
         # The last batch may not be full batch_size
-        if len(prompt_embeds)<len(sample_neg_prompt_embeds):
-            sample_neg_prompt_embeds = sample_neg_prompt_embeds[:len(prompt_embeds)]
-            sample_neg_pooled_prompt_embeds = sample_neg_pooled_prompt_embeds[:len(prompt_embeds)]
+        # if len(prompt_embeds)<len(sample_neg_prompt_embeds):
+        #     sample_neg_prompt_embeds = sample_neg_prompt_embeds[:len(prompt_embeds)]
+        #     sample_neg_pooled_prompt_embeds = sample_neg_pooled_prompt_embeds[:len(prompt_embeds)]
         with autocast():
             with torch.no_grad():
                 images, _, _ = pipeline_with_logprob(
@@ -256,7 +262,16 @@ def eval(pipeline, test_dataloader, text_encoders, tokenizers, config, accelerat
                     width=config.resolution, 
                     noise_level=0,
                 )
-        rewards = executor.submit(reward_fn, images, prompts, prompt_metadata, only_strict=False)
+        # rewards = executor.submit(reward_fn, images, prompts, prompt_metadata, only_strict=False)
+        expanded_prompts = prompts
+        expanded_metadata = prompt_metadata
+        rewards = executor.submit(
+            reward_fn,
+            images,
+            expanded_prompts,
+            expanded_metadata,
+            only_strict=False
+        )
         # yield to to make sure reward computation starts
         time.sleep(0)
         rewards, reward_metadata = rewards.result()
@@ -539,10 +554,10 @@ def main(_):
 
     neg_prompt_embed, neg_pooled_prompt_embed = compute_text_embeddings([""], text_encoders, tokenizers, max_sequence_length=128, device=accelerator.device)
 
-    sample_neg_prompt_embeds = neg_prompt_embed.repeat(config.sample.train_batch_size, 1, 1)
-    train_neg_prompt_embeds = neg_prompt_embed.repeat(config.train.batch_size, 1, 1)
-    sample_neg_pooled_prompt_embeds = neg_pooled_prompt_embed.repeat(config.sample.train_batch_size, 1)
-    train_neg_pooled_prompt_embeds = neg_pooled_prompt_embed.repeat(config.train.batch_size, 1)
+    # sample_neg_prompt_embeds = neg_prompt_embed.repeat(config.sample.train_batch_size, 1, 1)
+    # train_neg_prompt_embeds = neg_prompt_embed.repeat(config.train.batch_size, 1, 1)
+    # sample_neg_pooled_prompt_embeds = neg_pooled_prompt_embed.repeat(config.sample.train_batch_size, 1)
+    # train_neg_pooled_prompt_embeds = neg_pooled_prompt_embed.repeat(config.train.batch_size, 1)
 
     if config.sample.num_image_per_prompt == 1:
         config.per_prompt_stat_tracking = False
@@ -632,10 +647,24 @@ def main(_):
                 truncation=True,
                 return_tensors="pt",
             ).input_ids.to(accelerator.device)
+            k = config.sample.num_image_per_prompt
+            # 1️⃣ 먼저 repeat_interleave
+            prompt_embeds = prompt_embeds.repeat_interleave(k, dim=0)
+            pooled_prompt_embeds = pooled_prompt_embeds.repeat_interleave(k, dim=0)
+            prompt_ids = prompt_ids.repeat_interleave(k, dim=0)
+            # 2️⃣ 그 다음에 negative 생성
+            batch_size = prompt_embeds.shape[0]
+            sample_neg_prompt_embeds = neg_prompt_embed.repeat(batch_size, 1, 1)
+            sample_neg_pooled_prompt_embeds = neg_pooled_prompt_embed.repeat(batch_size, 1)
 
             # sample
             if config.sample.same_latent:
-                generator = create_generator(prompts, base_seed=epoch*10000+i)
+                # generator = create_generator(prompts, base_seed=epoch*10000+i)
+                # generator = create_generator(
+                #     [p for p in prompts for _ in range(k)],
+                #     base_seed=epoch*10000+i
+                # )
+                generator = None
             else:
                 generator = None
             with autocast():
@@ -660,12 +689,31 @@ def main(_):
             )  # (batch_size, num_steps + 1, 16, 96, 96)
             log_probs = torch.stack(log_probs, dim=1)  # shape after stack (batch_size, num_steps)
 
-            timesteps = pipeline.scheduler.timesteps.repeat(
-                config.sample.train_batch_size, 1
-            )  # (batch_size, num_steps)
+            # timesteps = pipeline.scheduler.timesteps.repeat(
+            #     config.sample.train_batch_size, 1
+            # )  # (batch_size, num_steps)
+            timesteps = pipeline.scheduler.timesteps.repeat(batch_size, 1)
 
             # compute rewards asynchronously
-            rewards = executor.submit(reward_fn, images, prompts, prompt_metadata, only_strict=True)
+            # rewards = executor.submit(reward_fn, images, prompts, prompt_metadata, only_strict=True)
+            k = config.sample.num_image_per_prompt
+            # expanded_prompts = [p for p in prompts for _ in range(k)]
+            # expanded_metadata = [m for m in prompt_metadata for _ in range(k)]
+            expanded_prompts = []
+            expanded_metadata = []
+            for p, m in zip(prompts, prompt_metadata):
+                for _ in range(k):
+                    expanded_prompts.append(p)
+                    expanded_metadata.append(m)
+            rewards = executor.submit(
+                reward_fn,
+                images,
+                expanded_prompts,
+                expanded_metadata,
+                only_strict=True
+            )
+            ######
+
             # yield to to make sure reward computation starts
             time.sleep(0)
 
@@ -683,6 +731,7 @@ def main(_):
                     ],  # each entry is the latent after timestep t
                     "log_probs": log_probs,
                     "rewards": rewards,
+                    "raw_prompts": prompts,
                 }
             )
 
@@ -701,6 +750,16 @@ def main(_):
             }
 
         # collate samples into dict where each entry has shape (num_batches_per_epoch * sample.batch_size, ...)
+        # samples = {
+        #     k: torch.cat([s[k] for s in samples], dim=0)
+        #     if not isinstance(samples[0][k], dict)
+        #     else {
+        #         sub_key: torch.cat([s[k][sub_key] for s in samples], dim=0)
+        #         for sub_key in samples[0][k]
+        #     }
+        #     for k in samples[0].keys()
+        # }
+        raw_prompts_all = [p for s in samples for p in s["raw_prompts"]]
         samples = {
             k: torch.cat([s[k] for s in samples], dim=0)
             if not isinstance(samples[0][k], dict)
@@ -709,7 +768,9 @@ def main(_):
                 for sub_key in samples[0][k]
             }
             for k in samples[0].keys()
+            if k != "raw_prompts"
         }
+        ######
 
         if epoch % 10 == 0 and accelerator.is_main_process:
             # this is a hack to force wandb to log the images as JPEGs instead of PNGs
@@ -725,8 +786,13 @@ def main(_):
                     pil = pil.resize((config.resolution, config.resolution))
                     pil.save(os.path.join(tmpdir, f"{idx}.jpg"))  # 使用新的索引
 
-                sampled_prompts = [prompts[i] for i in sample_indices]
-                sampled_rewards = [rewards['avg'][i] for i in sample_indices]
+                # sampled_prompts = [prompts[i] for i in sample_indices]
+                # sampled_rewards = [rewards['avg'][i] for i in sample_indices]
+                k = config.sample.num_image_per_prompt
+                # expanded_prompts = [p for p in prompts for _ in range(k)]
+                expanded_prompts = raw_prompts_all
+                sampled_prompts = [expanded_prompts[i] for i in sample_indices]
+                sampled_rewards = [samples["rewards"]["avg"][-len(images)+i] for i in sample_indices]
 
                 wandb.log(
                     {
@@ -856,12 +922,17 @@ def main(_):
             ):
                 if config.train.cfg:
                     # concat negative prompts to sample prompts to avoid two forward passes
-                    embeds = torch.cat(
-                        [train_neg_prompt_embeds[:len(sample["prompt_embeds"])], sample["prompt_embeds"]]
-                    )
-                    pooled_embeds = torch.cat(
-                        [train_neg_pooled_prompt_embeds[:len(sample["pooled_prompt_embeds"])], sample["pooled_prompt_embeds"]]
-                    )
+                    # embeds = torch.cat(
+                    #     [train_neg_prompt_embeds[:len(sample["prompt_embeds"])], sample["prompt_embeds"]]
+                    # )
+                    # pooled_embeds = torch.cat(
+                    #     [train_neg_pooled_prompt_embeds[:len(sample["pooled_prompt_embeds"])], sample["pooled_prompt_embeds"]]
+                    # )
+                    batch_size = sample["prompt_embeds"].shape[0]
+                    neg_embed = neg_prompt_embed.repeat(batch_size, 1, 1)
+                    neg_pooled = neg_pooled_prompt_embed.repeat(batch_size, 1)
+                    embeds = torch.cat([neg_embed, sample["prompt_embeds"]])
+                    pooled_embeds = torch.cat([neg_pooled, sample["pooled_prompt_embeds"]])
                 else:
                     embeds = sample["prompt_embeds"]
                     pooled_embeds = sample["pooled_prompt_embeds"]
