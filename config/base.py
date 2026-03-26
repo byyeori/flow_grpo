@@ -45,9 +45,9 @@ def get_config():
     # number of sampler inference steps for evaluation.
     sample.eval_num_steps = 8
     # classifier-free guidance weight. 1.0 is no guidance.
-    sample.guidance_scale = 4.5
+    sample.guidance_scale = 3.5
     # classifier-free guidance weight for evaluation. 1.0 is no guidance.
-    sample.eval_guidance_scale = 4.5
+    sample.eval_guidance_scale = 3.5
     # batch size (per GPU!) to use for sampling.
     sample.train_batch_size = 4
     sample.num_image_per_prompt = 2
