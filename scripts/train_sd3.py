@@ -427,8 +427,10 @@ def main(_):
     pipeline.text_encoder_3.to(accelerator.device, dtype=inference_dtype)
     
     pipeline.transformer.to(accelerator.device)
-
-
+    ## 추가함 ##
+    if config.train.activation_checkpointing:
+        pipeline.transformer.enable_gradient_checkpointing()
+    ###
     if config.use_lora:
         # Set correct lora layers
         target_modules = [
