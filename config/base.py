@@ -8,18 +8,18 @@ def get_config():
     # run name for wandb logging and checkpoint saving -- if not provided, will be auto-generated based on the datetime.
     config.run_name = ""
     config.debug = False
-    config.num_epochs = 100000
+    config.num_epochs = 10
     config.resume_from = None
     # random seed for reproducibility.
     config.seed = 42
     # top-level logging directory for checkpoint saving.
     config.logdir = "logs"
     # number of epochs between saving model checkpoints.
-    config.save_freq = 20
+    config.save_freq = 5
     # number of epochs between evaluating the model.
-    config.eval_freq = 20
+    config.eval_freq = 2
     # number of checkpoints to keep before overwriting old ones.
-    config.num_checkpoint_limit = 5
+    config.num_checkpoint_limit = 1
     # mixed precision training. options are "fp16", "bf16", and "no". half-precision speeds up training significantly.
     config.mixed_precision = "fp16"
     # allow tf32 on Ampere GPUs, which can speed up training.
@@ -34,24 +34,24 @@ def get_config():
     ###### Pretrained Model ######
     config.pretrained = pretrained = ml_collections.ConfigDict()
     # base model to load. either a path to a local directory, or a model name from the HuggingFace model hub.
-    pretrained.model = "stabilityai/stable-diffusion-xl-base-1.0"
+    pretrained.model = "stabilityai/stable-diffusion-3.5-medium"
     # revision of the model to load.
     pretrained.revision = "main"
 
     ###### Sampling ######
     config.sample = sample = ml_collections.ConfigDict()
     # number of sampler inference steps for collecting dataset.
-    sample.num_steps = 10
+    sample.num_steps = 8
     # number of sampler inference steps for evaluation.
-    sample.eval_num_steps = 10
+    sample.eval_num_steps = 8
     # classifier-free guidance weight. 1.0 is no guidance.
     sample.guidance_scale = 4.5
     # classifier-free guidance weight for evaluation. 1.0 is no guidance.
     sample.eval_guidance_scale = 4.5
     # batch size (per GPU!) to use for sampling.
     sample.train_batch_size = 2
-    sample.num_image_per_prompt = 2
-    sample.test_batch_size = 1
+    sample.num_image_per_prompt = 4
+    sample.test_batch_size = 2
     # number of batches to sample per epoch. the total number of samples per epoch is `num_batches_per_epoch *
     # batch_size * num_gpus`.
     sample.num_batches_per_epoch = 2
@@ -119,9 +119,10 @@ def get_config():
     ###### Reward Function ######
     # reward function to use. see `rewards.py` for available reward functions.
     # config.reward_fn = ml_collections.ConfigDict()
-    config.reward_fn = reward = ml_collections.ConfigDict()
-    reward.models = ["pickscore"]
-    reward.weights = [1.0]
+    # config.reward_fn = reward = ml_collections.ConfigDict()
+    # reward.models = ["pickscore"]
+    # reward.weights = [1.0]
+    config.reward_fn = {"pickscore": 1.0}
 
     config.save_dir = SAVE_DIR
 

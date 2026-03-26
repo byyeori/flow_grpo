@@ -113,6 +113,9 @@ dev = [
     "pytest==8.2.0",
 ]
 
+[[tool.uv.index]]
+url = "https://download.pytorch.org/whl/cu121"
+
 [tool.uv]
 # UV-specific configuration
 # Allow to install all optional dependencies at once
