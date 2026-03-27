@@ -5,16 +5,18 @@ from diffusers import StableDiffusion3Pipeline
 from flow_grpo.diffusers_patch.sd3_pipeline_with_logprob import pipeline_with_logprob
 from peft import PeftModel
 from torch import amp
-
 model_id = "stabilityai/stable-diffusion-3.5-medium"
 device = "cuda"
+
+# v_θ(x, t) = f(x, t; W + ΔW_lora) 여기서 lora를 학습함
+# base model = 일반적인 diffusion 방향
+# lora = reward 방향으로 미세하게 방향 틀기
 
 # 1. 파이프라인 로드
 pipe = StableDiffusion3Pipeline.from_pretrained(
     model_id,
     torch_dtype=torch.float16
 )
-
 # 2. 학습한 LoRA 적용 (실제 경로로 수정)
 pipe.transformer = PeftModel.from_pretrained(
     pipe.transformer,
