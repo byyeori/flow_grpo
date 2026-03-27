@@ -615,7 +615,8 @@ def main(_):
     global_step = 0
     train_iter = iter(train_dataloader)
 
-    while True:
+    # while True:
+    while epoch < config.num_epochs:
         #################### EVAL ####################
         pipeline.transformer.eval()
         if epoch % config.eval_freq == 0:
